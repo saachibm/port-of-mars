@@ -5,9 +5,13 @@ import {
   Generated,
   OneToMany,
   PrimaryGeneratedColumn,
+  OneToOne,
+  ManyToMany,
 } from "typeorm";
+import { Game } from "./Game";
 import { Player } from "./Player";
 import { SoloPlayer } from "./SoloPlayer";
+import { Student } from "./Student";
 import { TournamentRoundInvite } from "./TournamentRoundInvite";
 
 @Entity()
@@ -32,6 +36,12 @@ export class User {
 
   @OneToMany(type => SoloPlayer, soloPlayer => soloPlayer.user)
   soloPlayers!: Array<SoloPlayer>;
+
+  @OneToOne(type => Student, student => student.classroom)
+  student!: Student;
+
+  @ManyToMany(type => Game, game => game.user)
+  game!: Game;
 
   @Column({ default: false })
   passedQuiz!: boolean;

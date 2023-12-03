@@ -7,10 +7,13 @@ import {
   PrimaryGeneratedColumn,
   JoinColumn,
   OneToOne,
+  ManyToMany,
 } from "typeorm";
 import { GameEvent } from "./GameEvent";
 import { Player } from "@port-of-mars/server/entity/Player";
 import { TournamentRound } from "./TournamentRound";
+import { User } from "./User";
+import { Teacher } from "./Teacher";
 
 @Entity()
 export class Game {
@@ -35,6 +38,15 @@ export class Game {
 
   @ManyToOne(type => TournamentRound, tournamentRound => tournamentRound.games)
   tournamentRound!: TournamentRound;
+
+  @ManyToMany(type => User, user => user.student)
+  user!: User;
+
+  @ManyToOne(type => Teacher, teacher => teacher.game)
+  teacher!: Teacher;
+
+  @Column()
+  gamePin!: number;
 
   @Column()
   tournamentRoundId!: number;
