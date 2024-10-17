@@ -10,7 +10,7 @@ import { settings } from "@port-of-mars/server/settings";
 import { BaseService } from "@port-of-mars/server/services/db";
 import { generateUsername, getRandomIntInclusive, ServerError } from "@port-of-mars/server/util";
 import { SoloGameType } from "@port-of-mars/shared/sologame";
-import { ProlificParticipantStatus } from "@port-of-mars/shared/types";
+import { ProlificParticipantStatus, ProlificStudyData} from "@port-of-mars/shared/types";
 
 const logger = settings.logging.getLogger(__filename);
 
@@ -248,6 +248,28 @@ export class StudyService extends BaseService {
     return this.getRepository().findOneBy({ studyId });
   }
 
+
+  async getAllProlificStudies(): Promise<ProlificStudyData[]> {
+    try {
+      const studies = await this.getRepository().find();
+
+      return studies.map((study: ProlificStudy) => ({
+        description: study.description || "", 
+        studyId: study.studyId,
+        completionCode: study.completionCode,
+        isActive: study.isActive,
+        participationPoints: 0, 
+      }));
+    } catch (error) {
+      console.error("Error fetching all prolific studies:", error); 
+      throw new ServerError({
+        code: 500,
+        message: "Failed to fetch all prolific studies",
+        displayMessage: "Unable to retrieve studies at this time.",
+      });
+    }
+  }
+  
   async getProlificCompletionUrl(user: User): Promise<string> {
     const participant = await this.getParticipantRepository().findOne({
       where: { userId: user.id },
@@ -278,14 +300,42 @@ export class StudyService extends BaseService {
   async createProlificStudy(
     studyId: string,
     completionCode: string,
-    description?: string
+    description?: string,
+    isActive: boolean = true
   ): Promise<ProlificStudy> {
     const repo = this.getRepository();
     const study = repo.create({
       studyId,
       completionCode,
       description,
+      isActive,
     });
     return repo.save(study);
-  }
+  }  
+
+  async deleteProlificStudy(studyId: string): Promise<void> {
+    const study = await this.getRepository().findOneBy({ studyId });
+    if (!study) {
+      throw new Error(`Study with ID ${studyId} not found.`);
+    }
+    await this.getRepository().remove(study);
+  }  
+
+  async updateProlificStudy(
+    studyId: string,
+    completionCode: string,
+    description?: string,
+    isActive: boolean = true
+  ): Promise<ProlificStudy> {
+    const repo = this.getRepository();
+    const study = await repo.findOneBy({ studyId });
+    if (!study) {
+      throw new Error(`Study with ID ${studyId} not found.`);
+    }
+    study.description = description;
+    study.completionCode = completionCode;
+    study.isActive = isActive;
+    return repo.save(study);
+  }  
 }
+

@@ -179,6 +179,37 @@ export class AjaxRequest {
       }
     }
   }
+
+  async delete(
+    path: string,
+    done: (data: ResponseData) => Promise<any> | void
+  ): AjaxResponse {
+    let response;
+    try {
+      response = await fetch(path, {
+        method: "DELETE",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        redirect: "follow",
+        referrerPolicy: "no-referrer",
+      });
+      const responseData = await this.handleResponse(response);
+      return done(responseData);
+    } catch (e) {
+      if (e instanceof AjaxResponseError) {
+        throw e;
+      } else {
+        if (response && e instanceof Error) {
+          throw new AjaxResponseError({ kind: "danger", message: e.message }, response);
+        } else {
+          console.error("Unhandled error in request, returning to home screen", e);
+          this.router.push({ name: HOME_PAGE });
+        }
+      }
+    }
+  }  
 }
 
 export const Ajax = {

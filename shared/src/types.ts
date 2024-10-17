@@ -533,3 +533,11 @@ export interface ProlificParticipantStatus {
     label: string;
   };
 }
+
+export interface ProlificStudyData{
+  description: string;
+  studyId: string;
+  completionCode: string;
+  isActive: boolean;
+  participationPoints: number;
+}
