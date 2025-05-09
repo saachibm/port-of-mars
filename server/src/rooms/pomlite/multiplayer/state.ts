@@ -53,6 +53,8 @@ export class Player extends Schema {
   @type("uint8") points = TrioGameState.DEFAULTS.freeplay.points;
   @type("uint8") pendingInvestment: number | null = null;
   @type("uint8") pointsEarned: number | null = null;
+  @type("boolean") binaryVote: boolean | null = null; 
+  @type("string") roleVote: string | null = null;  
 }
 
 export class TreatmentParams extends Schema {

@@ -182,14 +182,38 @@ export class ApplyCardCmd extends Cmd<{ playerSkipped: boolean }> {
   async execute({ playerSkipped } = this.payload) {
     if (!this.state.activeCard) return;
 
+    const codeName = this.state.activeCard.codeName;
+
+    // handle special voting events
+    switch (codeName) {
+      case "Compulsive Philanthropy": {
+        const votedPlayer = this.state.voteResults?.compulsivePhilanthropy ?? this.defaultVoteResult(codeName);
+        this.applyCompulsivePhilanthropyResult(votedPlayer);
+        break;
+      }
+
+      case "Hero or Pariah": {
+        const voteResult = this.state.voteResults?.heroOrPariah ?? this.defaultVoteResult(codeName);
+        this.applyHeroOrPariahResult(voteResult);
+        break;
+      }
+
+      case "Personal Gain": {
+        const gainVotes = this.state.voteResults?.personalGain ?? this.defaultVoteResult(codeName);
+        this.applyPersonalGainResults(gainVotes);
+        break;
+      }
+    }
+
     if (playerSkipped) {
       this.room.eventTimeout?.clear();
     }
 
+    // apply card effects to players 
     this.state.players.forEach(player => {
       if (this.state.activeCard) {
         if (player.points < -this.state.activeCard.pointsEffect) {
-          player.points = 0; // prevent overflow
+          player.points = 0;
         } else {
           player.points += this.state.activeCard.pointsEffect;
         }
@@ -202,7 +226,7 @@ export class ApplyCardCmd extends Cmd<{ playerSkipped: boolean }> {
       }
     });
 
-    // system health shouldn't go above the max or below 0
+    // system health updates
     this.state.systemHealth = Math.max(
       0,
       Math.min(
@@ -211,17 +235,19 @@ export class ApplyCardCmd extends Cmd<{ playerSkipped: boolean }> {
       )
     );
 
-    this.state.activeCard.expired = true; // expire the card
+    this.state.activeCard.expired = true;
     this.state.updateVisibleCards();
 
+    // end game if health depleted
     if (this.state.systemHealth <= 0) {
       this.state.players.forEach(player => {
-        (player.pendingInvestment = 0), (player.pointsEarned = 0);
+        player.pendingInvestment = 0;
+        player.pointsEarned = 0;
       });
       return [new PersistRoundCmd(), new EndGameCmd().setPayload({ status: "defeat" })];
     }
 
-    // if we still have cards left, prepare the next one
+    // prepare next round card
     const nextRoundCard = this.state.nextRoundCard;
     if (nextRoundCard) {
       this.state.activeCardId = nextRoundCard.deckCardId;
@@ -229,6 +255,43 @@ export class ApplyCardCmd extends Cmd<{ playerSkipped: boolean }> {
     } else {
       this.state.canInvest = true;
       this.state.activeCardId = -1;
+    }
+  }
+
+  defaultVoteResult(cardName: string) {
+    switch (cardName) {
+      case "Compulsive Philanthropy":
+        return this.state.players[0];
+
+      case "Hero or Pariah":
+        return { player: this.state.players[0], effect: "gain" };
+
+      case "Personal Gain":
+        return this.state.players.map(p => ({ player: p, choice: "No" }));
+
+      default:
+        return null;
+    }
+  }
+
+  applyCompulsivePhilanthropyResult(votedPlayer: Player) {
+    votedPlayer.pendingInvestment = votedPlayer.resources;
+  }
+
+  applyHeroOrPariahResult(result: { player: Player; effect: "gain" | "lose" }) {
+    if (result.effect === "gain") {
+      result.player.resources += 4; 
+    } else {
+      result.player.resources = 0;
+    }
+  }
+  
+  applyPersonalGainResults(results: { player: Player; choice: "Yes" | "No" }[]) {
+    for (const { player, choice } of results) {
+      if (choice === "Yes") {
+        player.resources += 6;
+        this.state.systemHealth = Math.max(0, this.state.systemHealth - 6);
+      }
     }
   }
 }
